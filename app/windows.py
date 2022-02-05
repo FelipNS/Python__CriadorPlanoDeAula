@@ -8,6 +8,8 @@ class MainWindow:
     def __init__(self):
         root = tk.Tk()
         
+        label_test = ttk.Label(root, text='Test')
+        label.pack()
         center(root)
         root.mainloop()
 
