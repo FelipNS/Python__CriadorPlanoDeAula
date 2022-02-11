@@ -1,8 +1,7 @@
 
-import pandas as pd
-import numpy as np
+import pandas as pd 
 
-file = pd.ExcelFile('data/data_classes.xlsm')
+file = pd.ExcelFile('data\data_classes.xlsm')
 
 df_portuguese = file.parse('Português')
 df_art = file.parse('Artes')
@@ -25,5 +24,5 @@ class_df_dict = {
 def get_class_df() -> dict:
     return class_df_dict
 
-def get_names_sheet() -> list:
+def get_sheet_names() -> list:
     return file.sheet_names
