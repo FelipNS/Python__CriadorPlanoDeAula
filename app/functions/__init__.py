@@ -1,4 +1,3 @@
-import os
 from tkinter.messagebox import showinfo
 import pandas as pd
 import numpy as np
