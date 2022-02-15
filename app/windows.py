@@ -1,28 +1,30 @@
 import tkinter as tk
 import tkinter.ttk as ttk
-from tkinter.messagebox import showinfo
 from config.config import *
-from data import get_sheet_names, get_class_df
-import pandas as pd
-import numpy as np
+from data import get_sheet_names
+from app.functions import FilterWidgetValues, SubmitHability
 
-class MainWindow:
-    root = tk.Tk()
+class App:
+
+    root = tk.Tk()    
 
     def __init__(self):
         self.root
+        self.root.title('Seletor de Habilidades')
              
-        Header()
+        WidgetsApp()
         
         center(self.root, height=500)
         self.root.mainloop()
 
-
-class Header:
+class WidgetsApp:
     
     def __init__(self):
-        self.root = MainWindow.root
+        self.root = App.root
+        
         self.filter = FilterWidgetValues()
+        self.submit_hability = SubmitHability(r"data\habilitys.txt")
+
         
         self.class_label = ttk.Label(self.root, 
                                      text='MATÉRIA',
@@ -33,15 +35,20 @@ class Header:
         self.knowlegde_objects_label = ttk.Label(self.root,
                                                  text='OBJETOS DE CONHECIMENTO')
         self.knowlegde_objects_combobox = ttk.Combobox(self.root)
-        self.hability_labelfframe = ttk.LabelFrame(self.root,
+        self.hability_labelframe = ttk.LabelFrame(self.root,
                                              text='HABILIDADES')
-        self.hability_listbox = tk.Listbox(self.hability_labelfframe,
+        self.hability_listbox = tk.Listbox(self.hability_labelframe,
                                            selectmode=tk.SINGLE)
-        self.hability_label = tk.Label(self.hability_labelfframe,
+        self.hability_label = tk.Label(self.hability_labelframe,
                                            justify=tk.LEFT)
-        self.submit_button = ttk.Button(self.hability_labelfframe,
+        self.submit_button = ttk.Button(self.hability_labelframe,
                                          text='SELECIONAR HABILIDADE',
-                                         command=lambda: self.submit_hability)
+                                         width=30,
+                                         command=lambda: self.select_hability())
+        self.save_button = ttk.Button(self.hability_labelframe,
+                                      text='COPIAR PARA A ÁREA DE TRANSFERÊNCIA',
+                                      width=30,
+                                      command=lambda: self.copy_to_clipboard())
         
         self.class_combobox.bind('<<ComboboxSelected>>', lambda evt: self._widgets_to_portuguese_class(evt))
         self.knowlegde_objects_combobox.bind('<<ComboboxSelected>>', lambda evt: self.filter.fill_widget(evt, self.hability_listbox))
@@ -52,17 +59,46 @@ class Header:
         self.knowlegde_objects_label.grid(row=3, column=0, padx=(20, 0), pady=(10, 0), sticky=tk.EW)
         self.knowlegde_objects_combobox.grid(row=3, column=1, padx=(10, 20), pady=(10, 0), sticky=tk.EW)
         
-        self.hability_labelfframe.grid(row=4, column=0, columnspan=2, padx=(20,20), pady=(10, 10), sticky=tk.EW)
-        self.hability_listbox.grid(row=0, rowspan=5, column=0,columnspan=5, padx=(20, 20), pady=(20, 0), sticky=tk.EW)
-        self.hability_label.grid(row=1, column=0, columnspan=3, padx=(20, 10), pady=(10, 0), sticky=tk.EW)
-        self.submit_button.grid(row=1, column=3, columnspan=2, pady=(0, 20), pady=(10, 0), sticky=tk.EW)
+        self.hability_labelframe.grid(row=4, column=0, columnspan=2, padx=(20,20), pady=(10, 10), sticky=tk.EW)
+        self.hability_listbox.pack(fill=tk.X, side=tk.TOP, expand=True, padx=(20, 0), pady=(0,10))
+        self.hability_label.pack(fill=tk.X, side=tk.TOP, expand=False, padx=(20, 10), pady=(0, 10))
+        self.save_button.pack(fill=tk.BOTH, side=tk.BOTTOM, expand=False, padx=(20, 20), pady=(0, 10))
+        self.submit_button.pack(fill=tk.BOTH, side=tk.BOTTOM, expand=False, padx=(20, 20), pady=(0, 20))
     
-    def submit_hability(self):
-        hability = self.hability_label.cget('text')
-        
-        
-    def __show_hability(self, evt):    
-        self.hability_label.config(text=evt.widget.get(tk.ACTIVE))
+    def copy_to_clipboard(self):
+        self.submit_hability.close()
+    
+    def select_hability(self):
+        self.submit_hability.write(self.hability_label.cget('text'))
+    
+    def __show_hability(self, evt):
+        try:
+            text = self.hability_listbox.get(evt.widget.curselection())
+        except tk.TclError:
+            self.hability_label.config(text='')
+            return          
+        multine_text = str()
+        broken_in = 60
+        idx=0
+        while idx < len(text):
+            if broken_in <= len(text):
+                if idx <= broken_in:
+                    multine_text += text[idx]
+                    idx += 1
+                else:
+                    while text[idx] != ' ':
+                        multine_text += text[idx]
+                        idx += 1
+                        if idx >= len(text):
+                            break
+                    multine_text += '\n'
+                    broken_in += 60
+                    idx += 1
+            else:
+                multine_text += text[len(multine_text):]
+                break
+     
+        self.hability_label.config(text=multine_text)
         
     def __is_portuguese(self) -> bool:
        value = self.class_combobox.get()
@@ -112,7 +148,7 @@ class Header:
     
     def __clear_combobox(self):
         for k, widget in enumerate(self.root.children.values()):
-            if k != 2:
+            if k != 1:
                 if widget.winfo_class() != 'TLabelframe':
                     if widget.winfo_class() == 'TCombobox':
                         widget.delete(0, tk.END)
@@ -126,102 +162,6 @@ class Header:
                         except:
                             pass
         
-
-class FilterWidgetValues:
-    
-    df_filtered = None
-    df_backup = None
-    serie = pd.Series([], dtype='O')  
-    list_header = None
-    
-    wid_value = None
-    previous_column_name = None
-    current_column_name = None
-    
-    used_filters = {}
-    
-    def __select_class_df(self, class_name):
-        match class_name:
-            case 'Português':
-                internal_class_name = 'portuguese'
-            case 'Artes':
-                internal_class_name = 'art'
-            case 'Matemática':
-                internal_class_name = 'math'
-            case 'Ciências':
-                internal_class_name = 'science'
-            case 'Geografia':
-                internal_class_name = 'geography'
-            case 'História':
-                internal_class_name = 'history'
-            case 'E. Religioso':
-                internal_class_name = 'religion'
-        
-        self.df_backup = self.df_filtered = get_class_df()[internal_class_name]
-        self.list_header = [i for i in self.df_backup.columns]
-        self.class_name = class_name
-        
-    def fill_widget(self, evt, widget_to_fill=ttk.Combobox()):
-        self.wid_value = evt.widget.get()
-        if widget_to_fill.winfo_class() != 'Listbox':
-            if self.wid_value in get_sheet_names():
-                self.__select_class_df(self.wid_value)
-                self.current_column_name = self.list_header[0]
-                serie = self.df_filtered[self.current_column_name]
-                serie = serie.drop_duplicates()
-                values = [i for i in serie.values]
-                return values
-            else:
-                self.__update_used_filter()
-                cur_column = self.__set_current_column_name()
-                self.serie = self.df_filtered[cur_column]
-                self.serie = self.serie.drop_duplicates()
-                values = [i for i in self.serie.values]
-                widget_to_fill.config(values=values)
-        else:
-            self.__update_used_filter()
-            cur_column = self.__set_current_column_name()
-            self.serie = self.df_filtered[cur_column]
-            self.serie = self.serie.drop_duplicates()
-            values = [i for i in self.serie.values]
-            widget_to_fill.delete(0, tk.END)
-            for i in values:
-                widget_to_fill.insert(tk.END, i)
-    
-    def __set_current_column_name(self):
-        serie_temp = self.df_backup[self.current_column_name].drop_duplicates()
-        if self.wid_value in serie_temp.values: 
-            self.previous_column_name = self.current_column_name
-            self.current_column_name = self.list_header[self.list_header.index(self.previous_column_name)+1]
-            self.__filter_dataframe(self.previous_column_name)
-        else:
-            while self.wid_value not in self.df_backup[self.previous_column_name].values:
-                self.current_column_name = self.previous_column_name
-                self.previous_column_name = self.list_header[self.list_header.index(self.current_column_name)-1]
-            self.__filter_dataframe(self.previous_column_name, reverse=True)
-        
-        return self.current_column_name
-    
-    def __filter_dataframe(self, previous_column, reverse=False):
-        if reverse:
-            headers_needs = self.list_header[self.list_header.index(previous_column): len(self.list_header)]
-            self.df_filtered = self.df_backup.copy()
-            if headers_needs[0] != self.list_header[0] and len(self.list_header) == 4:
-                for k in self.used_filters.keys():
-                    if k not in headers_needs:
-                        idx = np.where(self.df_filtered[k]==self.used_filters[k])
-                        self.df_filtered = self.df_filtered.iloc[idx].copy()
-            idx = np.where(self.df_filtered[previous_column]==self.wid_value)
-            self.df_filtered = self.df_filtered.iloc[idx].copy()
-            self.df_filtered.drop(previous_column, axis='columns', inplace=True)
-        else:
-            idx = np.where(self.df_filtered[previous_column]==self.wid_value)
-            self.df_filtered = self.df_filtered.iloc[idx].copy()
-            self.df_filtered.drop(previous_column, axis='columns', inplace=True)
-    
-    def __update_used_filter(self):
-        self.used_filters[self.current_column_name] = self.wid_value
-
         
 
        

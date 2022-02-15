@@ -1,7 +1,7 @@
 
 import pandas as pd 
 
-file = pd.ExcelFile('data\data_classes.xlsm')
+file = pd.ExcelFile('data\data_classes.xlsx')
 
 df_portuguese = file.parse('Português')
 df_art = file.parse('Artes')
