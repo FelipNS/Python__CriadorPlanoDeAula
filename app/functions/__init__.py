@@ -105,9 +105,9 @@ class SubmitHability:
     def __init__(self, file_path) -> None:
         self.file_path = file_path
 
-    def write(self, text):
-        self.file = open(self.file_path, 'a') 
-        full_text = f"{text}\n"
+    def write(self, text: str):
+        self.file = open(self.file_path, 'a', encoding='utf8') 
+        full_text = f"{text.replace('\n', ' ')}\n"
         self.file.write(full_text)
         showinfo('HABILIDADE ADICIONADA',  'Habilidade selecionada.')
     
